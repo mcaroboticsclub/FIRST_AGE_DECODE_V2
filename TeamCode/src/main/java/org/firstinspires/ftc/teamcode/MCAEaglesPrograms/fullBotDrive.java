@@ -59,22 +59,40 @@ public class fullBotDrive extends LinearOpMode {
         backRight.setDirection(DcMotorSimple.Direction.REVERSE);
         flywheel.setDirection(DcMotorSimple.Direction.REVERSE);
 
+        // ---- Telemetry ----
+        telemetry.addData("Status", "Initialized");
+        telemetry.addData("Controls", "Gamepad1: Drive | Gamepad2: Turret/Flywheel/Intake");
+        telemetry.update();
+
         // Wait for the start button to be pushed before starting the run loop.
         waitForStart();
 
         while (opModeIsActive()) {
-            frontLeft.setPower((-gamepad1.left_stick_y + gamepad1.left_stick_x + gamepad1.right_stick_x) * speedFactor);
-            backLeft.setPower((-gamepad1.left_stick_y - gamepad1.left_stick_x + gamepad1.right_stick_x) * speedFactor);
-            frontRight.setPower((-gamepad1.left_stick_y - gamepad1.left_stick_x - gamepad1.right_stick_x) * speedFactor);
-            backRight.setPower((-gamepad1.left_stick_y + gamepad1.left_stick_x - gamepad1.right_stick_x) * speedFactor);
 
-            intakeDirect.setPower(-gamepad2.left_stick_y * speedFactor);
+            // ---- Drive ----
+            double flPower = (-gamepad1.left_stick_y + gamepad1.left_stick_x + gamepad1.right_stick_x) * speedFactor;
+            double blPower = (-gamepad1.left_stick_y - gamepad1.left_stick_x + gamepad1.right_stick_x) * speedFactor;
+            double frPower = (-gamepad1.left_stick_y - gamepad1.left_stick_x - gamepad1.right_stick_x) * speedFactor;
+            double brPower = (-gamepad1.left_stick_y + gamepad1.left_stick_x - gamepad1.right_stick_x) * speedFactor;
+
+            frontLeft.setPower(flPower);
+            backLeft.setPower(blPower);
+            frontRight.setPower(frPower);
+            backRight.setPower(brPower);
+
+            // ---- Intake ----
+            double intakePower = -gamepad2.left_stick_y * speedFactor;
+            intakeDirect.setPower(intakePower);
             intakeBoost.setPower(-intakeDirect.getPower());
 
-            turret.setPower(-gamepad2.right_stick_x * 0.3);
-            flywheel.setPower(gamepad2.left_trigger - gamepad2.right_trigger);
+            // ---- Turret / Flywheel ----
+            double turretPower = -gamepad2.right_stick_x * 0.3;
+            turret.setPower(turretPower);
+            double flywheelPower = gamepad2.left_trigger - gamepad2.right_trigger;
+            flywheel.setPower(flywheelPower);
 
-            if (gamepad2.rightBumperWasReleased()) { // SERVO POSITIONS NOT CORRECT
+            // ---- Servos ----
+            if (gamepad2.rightBumperWasReleased()) {
                 blocker.setPosition(0.29);
             } else if (gamepad2.leftBumperWasReleased()) {
                 blocker.setPosition(0.39);
@@ -82,10 +100,25 @@ public class fullBotDrive extends LinearOpMode {
 
             if (gamepad2.dpadDownWasReleased()) {
                 pusher.setPosition(0.2);
-
             } else if (gamepad2.dpadUpWasReleased()) {
-                pusher.setPosition(0);
+                pusher.setPosition(0.0);
             }
+
+            // ---- Telemetry Display ----
+            telemetry.addData("Drive FL/FR/BL/BR", "%.2f %.2f %.2f %.2f", flPower, frPower, blPower, brPower);
+            telemetry.addData("Intake Pwr", "%.2f", intakePower);
+            telemetry.addData("Turret Pwr", "%.2f", turretPower);
+            telemetry.addData("Flywheel Pwr", "%.2f", flywheelPower);
+            telemetry.addData("Pusher Pos", "%.2f", pusher.getPosition());
+            telemetry.addData("Blocker Pos", "%.2f", blocker.getPosition());
+
+            if (limelight != null) {
+                telemetry.addData("Limelight", "Active");
+                // Optionally, you can add more Limelight info here if needed
+                // e.g., target angles, distances, or number of fiducials
+            }
+
+            telemetry.update();
         }
     }
 }
