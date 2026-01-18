@@ -59,6 +59,8 @@ public class fullBotDrive extends LinearOpMode {
         backRight.setDirection(DcMotorSimple.Direction.REVERSE);
         flywheel.setDirection(DcMotorSimple.Direction.REVERSE);
 
+        turret.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+
         telemetry.addData("Turret Power: ", turret.getPower());
         telemetry.addData("Turret Position: ", turret.getCurrentPosition());
         telemetry.addData("Turret Target Position: ", turret.getTargetPosition());
