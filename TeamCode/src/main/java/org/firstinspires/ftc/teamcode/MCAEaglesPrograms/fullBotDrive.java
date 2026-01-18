@@ -6,34 +6,34 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.Servo;
+import com.qualcomm.robotcore.util.Range;
 
 @TeleOp(name = "Full Bot Drive", group = "MCA EAGLES Programs")
 public class fullBotDrive extends LinearOpMode {
 
-    // Define the speedfactor variable to be used to control the max percent of speed.
+    // Speed scaling
     double speedFactor = 1.0;
 
-    // Define all of the motors and servos.
-    DcMotor frontLeft = null;
-    DcMotor frontRight = null;
-    DcMotor backLeft = null;
-    DcMotor backRight = null;
-    DcMotor intakeDirect = null;
-    DcMotor intakeBoost = null;
-    DcMotor turret = null;
-    DcMotor flywheel = null;
-    Servo pusher = null;
-    Servo blocker = null;
-    Limelight3A limelight = null;
+    // Hardware
+    DcMotor frontLeft, frontRight, backLeft, backRight;
+    DcMotor intakeDirect, intakeBoost, turret, flywheel;
+    Servo pusher, blocker;
+    Limelight3A limelight;
+
+    // Turret limits
+    private final int TURRET_MAX = 1600;
+    private final int TURRET_MIN = -1600;
+    private final double TURRET_SPEED = 0.3;
 
     @Override
     public void runOpMode() throws InterruptedException {
 
-        // Hardware map all of the motors.
+        // Map hardware
         frontLeft = hardwareMap.dcMotor.get("Front_Left");
         frontRight = hardwareMap.dcMotor.get("Front_Right");
         backLeft = hardwareMap.dcMotor.get("Back_Left");
         backRight = hardwareMap.dcMotor.get("Back_Right");
+
         intakeDirect = hardwareMap.dcMotor.get("Intake_Direct");
         intakeBoost = hardwareMap.dcMotor.get("Intake_Boost");
         flywheel = hardwareMap.dcMotor.get("Flywheel");
@@ -44,42 +44,58 @@ public class fullBotDrive extends LinearOpMode {
 
         limelight = hardwareMap.get(Limelight3A.class, "limelight");
 
-        // Set all of the motors to brake when not powered.
+        // Set motor behaviors
         frontLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         frontRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         backLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         backRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+
         intakeDirect.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         intakeBoost.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         turret.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         flywheel.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
 
-        // Reverse the direction of some of the robot's motors.
         frontRight.setDirection(DcMotorSimple.Direction.REVERSE);
         backRight.setDirection(DcMotorSimple.Direction.REVERSE);
         flywheel.setDirection(DcMotorSimple.Direction.REVERSE);
 
-        telemetry.addData("Turret Power: ", turret.getPower());
-        telemetry.addData("Turret Position: ", turret.getCurrentPosition());
-        telemetry.addData("Turret Target Position: ", turret.getTargetPosition());
+        // Reset turret encoder to zero (center)
+        turret.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        turret.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+
+        telemetry.addData("Status", "Initialized");
         telemetry.update();
 
-        // Wait for the start button to be pushed before starting the run loop.
         waitForStart();
 
         while (opModeIsActive()) {
+
+            // ---- Drive ----
             frontLeft.setPower((-gamepad1.left_stick_y + gamepad1.left_stick_x + gamepad1.right_stick_x) * speedFactor);
             backLeft.setPower((-gamepad1.left_stick_y - gamepad1.left_stick_x + gamepad1.right_stick_x) * speedFactor);
             frontRight.setPower((-gamepad1.left_stick_y - gamepad1.left_stick_x - gamepad1.right_stick_x) * speedFactor);
             backRight.setPower((-gamepad1.left_stick_y + gamepad1.left_stick_x - gamepad1.right_stick_x) * speedFactor);
 
+            // ---- Intake ----
             intakeDirect.setPower(-gamepad2.left_stick_y * speedFactor);
             intakeBoost.setPower(-intakeDirect.getPower());
 
-            turret.setPower(-gamepad2.right_stick_x * 0.3);
+            // ---- Turret with limits ----
+            double turretInput = -gamepad2.right_stick_x * TURRET_SPEED;
+            int currentPos = turret.getCurrentPosition();
+
+            // Apply limits
+            if ((currentPos >= TURRET_MAX && turretInput > 0) || (currentPos <= TURRET_MIN && turretInput < 0)) {
+                turret.setPower(0);
+            } else {
+                turret.setPower(turretInput);
+            }
+
+            // ---- Flywheel ----
             flywheel.setPower(gamepad2.left_trigger - gamepad2.right_trigger);
 
-            if (gamepad2.rightBumperWasReleased()) { // SERVO POSITIONS NOT CORRECT
+            // ---- Servos ----
+            if (gamepad2.rightBumperWasReleased()) {
                 blocker.setPosition(0.29);
             } else if (gamepad2.leftBumperWasReleased()) {
                 blocker.setPosition(0.39);
@@ -87,14 +103,18 @@ public class fullBotDrive extends LinearOpMode {
 
             if (gamepad2.dpadDownWasReleased()) {
                 pusher.setPosition(0.2);
-
             } else if (gamepad2.dpadUpWasReleased()) {
-                pusher.setPosition(0);
+                pusher.setPosition(0.0);
             }
 
-            telemetry.addData("Turret Power: ", turret.getPower());
-            telemetry.addData("Turret Position: ", turret.getCurrentPosition());
-            telemetry.addData("Turret Target Position: ", turret.getTargetPosition());
+            // ---- Telemetry ----
+            telemetry.addData("Turret Power", turret.getPower());
+            telemetry.addData("Turret Position", turret.getCurrentPosition());
+            telemetry.addData("Turret Limits", "%d to %d", TURRET_MIN, TURRET_MAX);
+            telemetry.addData("Flywheel Power", flywheel.getPower());
+            telemetry.addData("Intake Power", intakeDirect.getPower());
+            telemetry.addData("Pusher Pos", pusher.getPosition());
+            telemetry.addData("Blocker Pos", blocker.getPosition());
             telemetry.update();
         }
     }
