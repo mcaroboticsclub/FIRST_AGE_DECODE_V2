@@ -42,7 +42,7 @@ public class fullBotDrive extends LinearOpMode {
         pusher = hardwareMap.servo.get("Pusher");
         blocker = hardwareMap.servo.get("Blocker");
 
-        limelight = hardwareMap.get(Limelight3A.class, "Ethernet Device"); // TEST
+        limelight = hardwareMap.get(Limelight3A.class, "limelight");
 
         // Set all of the motors to brake when not powered.
         frontLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
